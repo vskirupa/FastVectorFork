@@ -46,6 +46,12 @@ app.include_router(
 )
 
 app.include_router(
+    tiles.router,
+    prefix="/api/v1/basisassets",
+    tags=["basisassets"],
+)
+
+app.include_router(
     table.router,
     prefix="/api/v1/table",
     tags=["Tables"],

@@ -5,3 +5,4 @@ pygeofilter==0.1.2
 prometheus_fastapi_instrumentator==5.8.2
 shapely==2.0.1
 jinja2==3.0.3
+aiofiles==23.1.0

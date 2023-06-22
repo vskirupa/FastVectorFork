@@ -7,6 +7,101 @@ from pygeofilter.parsers.ecql import parse
 
 import config
 
+async def get_multilayer_tile(database: str, scheme: str, z: int,
+    x: int, y: int, fields: str, cql_filter: str, db_settings: object, app: FastAPI) -> bytes:
+    """
+    Method to return vector tile from database.
+    """
+    tables = []
+    
+    cachefile = f'{os.getcwd()}/cache/{database}_{scheme}_basisassets/{z}/{x}/{y}'
+    if os.path.exists(cachefile):
+        return '', True
+
+    pool = app.state.databases[f'{database}_pool']
+
+    async with pool.acquire() as con:
+
+
+        # sql_field_query = f"""
+        # SELECT column_name
+        # FROM information_schema.columns
+        # WHERE table_name = '{table}'
+        # AND column_name != 'geom';
+        # """
+
+        # field_mapping = {}
+
+        # db_fields = await con.fetch(sql_field_query)
+
+        # for field in db_fields:
+        #     field_mapping[field['column_name']] = field['column_name']
+
+        # if fields is None:
+        #     field_list = ""
+
+        #     for field in db_fields:
+        #         field_list += f", {field['column_name']}"
+        # else:
+        #     field_list = f",{fields}"
+
+        sql_vector_query = f"""
+                        WITH
+                bounds AS (
+                    SELECT ST_TileEnvelope({z}, {x}, {y})  as geom
+                ), 
+                mvtcomposite as (
+                    select 
+                            'halte' layername, 
+                            id, 
+                            st_asmvtgeom(
+                                    ST_Transform(t.geom, 3857)
+                                    ,bounds.geom
+                            ) AS mvtgeom, 
+                            jsonb_build_object('idcode', idcode) json
+                    from "halte" as t, bounds
+                    WHERE ST_Intersects(ST_Transform(t.geom, 4326),ST_Transform(bounds.geom, 4326))
+                    union
+                    select 
+                            'shapeLine' layername, 
+                            id, 
+                            st_asmvtgeom(
+                                    ST_Transform(t.geom, 3857)
+                                    ,bounds.geom
+                            ) AS mvtgeom, 
+                            jsonb_build_object('shape_id', t.shape_id) json
+                    from "shapeLine" as t, bounds
+                    WHERE ST_Intersects(ST_Transform(t.geom, 4326),ST_Transform(bounds.geom, 4326))
+                    
+                    
+                )
+                SELECT ST_AsMVT(mvtcomposite.*,'composite')  FROM mvtcomposite
+        """
+        # if cql_filter:
+        #     ast = parse(cql_filter)
+        #     where_statement = to_sql_where(ast, field_mapping)
+        #     sql_vector_query += f" AND {where_statement}"
+
+        #sql_vector_query += f"LIMIT {db_settings['max_features_per_tile']}) as tile"
+
+        tile = await con.fetchval(sql_vector_query)
+
+        if fields is None and cql_filter is None and db_settings['cache_age_in_seconds'] > 0:
+
+            cachefile_dir = f'{os.getcwd()}/cache/{database}_{scheme}_basisassets/{z}/{x}'
+
+            if not os.path.exists(cachefile_dir):
+                try:
+                    os.makedirs(cachefile_dir)
+                except OSError:
+                    pass
+
+            with open(cachefile, "wb") as file:
+                file.write(tile)
+                file.close()
+
+        return tile, False
+
 async def get_tile(database: str, scheme: str, table: str, z: int,
     x: int, y: int, fields: str, cql_filter: str, db_settings: object, app: FastAPI) -> bytes:
     """

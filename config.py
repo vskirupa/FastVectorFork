@@ -5,7 +5,7 @@ DATABASES = {
         "database": "",
         "username": "",
         "password": "",
-        "port": "",
+        "port": 4412,
         "cache_age_in_seconds": 6000,
         "max_features_per_tile": 100000
     }

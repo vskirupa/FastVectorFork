@@ -9,6 +9,30 @@ router = APIRouter()
 import utilities
 import config
 
+@router.get("/", tags=["basisassets"])
+async def test():
+    return 'True'
+
+
+@router.get("/{z}/{x}/{y}.pbf", tags=["basisassets"])
+async def tilesBa(z: int, x: int,
+    y: int, request: Request,fields: Optional[str] = None, cql_filter: Optional[str] = None):
+    database = 'data'
+    schema = 'public'
+    table = 'shapeLine'
+
+    return await tiles(
+        database=database,
+        scheme=schema,
+        table=table,
+        z=z,
+        x=x,
+        y=y,
+        request=request,
+        fields=fields,
+        cql_filter=cql_filter
+    )
+
 @router.get("/{database}/{scheme}/{table}/{z}/{x}/{y}.pbf", tags=["Tiles"])
 async def tiles(database: str, scheme: str, table: str, z: int, x: int,
     y: int, request: Request,fields: Optional[str] = None, cql_filter: Optional[str] = None):
@@ -18,10 +42,10 @@ async def tiles(database: str, scheme: str, table: str, z: int, x: int,
 
     db_settings = config.DATABASES[database]
 
-    pbf, tile_cache = await utilities.get_tile(
+    pbf, tile_cache = await utilities.get_multilayer_tile(
         database,
         scheme,
-        table,
+        #table,
         z,
         x,
         y,
